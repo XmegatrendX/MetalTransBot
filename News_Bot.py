@@ -2,7 +2,7 @@ import os
 import json
 import time
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters  # ← Правильный импорт для v22
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 from deep_translator import GoogleTranslator
 from fastapi import FastAPI, Request, HTTPException
 import uvicorn
@@ -23,7 +23,7 @@ PORT = int(os.environ.get("PORT", 10000))
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 if not WEBHOOK_URL:
-    raise ValueError("❌ Укажите WEBHOOK_URL в environment variables[](https://your-service.onrender.com/webhook)")
+    raise ValueError("❌ Укажите WEBHOOK_URL без /webhook в конце (например https://metaltransbot.onrender.com)")
 
 WEBHOOK_PATH = "/webhook"
 FULL_WEBHOOK_URL = WEBHOOK_URL.rstrip("/") + WEBHOOK_PATH
@@ -60,7 +60,7 @@ def translate_text(text: str) -> str:
         return text
 
 # ==============================
-# === Обработчик постов из канала ===
+# === Обработчик новых постов из канала ===
 # ==============================
 async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -75,7 +75,7 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
         original_text = post.text or post.caption or ""
         if not original_text.strip():
-            print(f"⚠️ Сообщение {post_id} без текста")
+            print(f"⚠️ Сообщение {post_id} без текста — пропускаем")
             save_processed(post_id)
             return
 
@@ -83,20 +83,20 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         translated = translate_text(original_text)
 
         await context.bot.send_message(chat_id=TARGET_CHANNEL_ID, text=translated)
-        print(f"✅ Переведено и отправлено")
+        print(f"✅ Переведено и отправлено в целевой канал")
         save_processed(post_id)
-        time.sleep(1)
+        time.sleep(1)  # защита от флуда
     except Exception as e:
-        print(f"❌ Ошибка обработки: {e}")
+        print(f"❌ Ошибка при обработке сообщения: {e}")
 
 # ==============================
-# === Telegram Application ===
+# === Создание Telegram Application ===
 # ==============================
-app = ApplicationBuilder().token(BOT_TOKEN).build()  # ← Правильный builder для v22
+app = ApplicationBuilder().token(BOT_TOKEN).build()
 app.add_handler(MessageHandler(filters.ChatType.CHANNEL, channel_post_handler))
 
 # ==============================
-# === Установка webhook ===
+# === Установка webhook при старте ===
 # ==============================
 async def set_webhook():
     try:
@@ -114,34 +114,41 @@ async def set_webhook():
         print(f"❌ Ошибка установки webhook: {e}")
 
 # ==============================
-# === FastAPI ===
+# === FastAPI приложение ===
 # ==============================
 fastapi_app = FastAPI()
 
+# Health check (для Render)
 @fastapi_app.get("/")
 async def root():
-    return {"status": "ok", "message": "Bot running with webhooks"}
+    return {"status": "ok", "message": "MetalTrans bot is alive and running with webhooks"}
 
+# Webhook-эндпоинт от Telegram
 @fastapi_app.post(WEBHOOK_PATH)
 async def telegram_webhook(request: Request):
     try:
         json_data = await request.json()
         update = Update.de_json(json_data, app.bot)
+
+        # Ключевое исправление: инициализация Application перед каждым обновлением
+        await app.initialize()
         await app.process_update(update)
+        # await app.shutdown()  # опционально, можно раскомментировать при проблемах с памятью
+
         return {"ok": True}
     except Exception as e:
         print(f"❌ Ошибка webhook: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Запуск установки webhook при старте сервера
+# Установка webhook при запуске сервера
 async def startup_event():
     await set_webhook()
-    print("🚀 Бот готов к работе в webhook-режиме")
+    print("🚀 Бот полностью готов к работе в webhook-режиме")
 
 fastapi_app.add_event_handler("startup", startup_event)
 
 # ==============================
-# === Запуск ===
+# === Запуск сервера ===
 # ==============================
 if __name__ == "__main__":
     print("Запускаем сервер на Render...")
