@@ -2,7 +2,7 @@ import os
 import json
 import time
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, ContextTypes, MessageHandler, filters
 from deep_translator import GoogleTranslator
 from fastapi import FastAPI, Request, HTTPException
 import uvicorn
