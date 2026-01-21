@@ -10,14 +10,14 @@ import uvicorn
 # ==============================
 # === Настройки через окружение ===
 # ==============================
-BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("❌ TELEGRAM_TOKEN не задан в переменных окружения!")
+#BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+#if not BOT_TOKEN:
+#    raise ValueError("❌ TELEGRAM_TOKEN не задан в переменных окружения!")
 
-SOURCE_CHANNEL_ID = int(os.getenv("SOURCE_CHANNEL_ID", "-1003681531983"))
-TARGET_CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID", "-1003240723502"))
+#SOURCE_CHANNEL_ID = int(os.getenv("SOURCE_CHANNEL_ID", "-1003681531983"))
+#TARGET_CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID", "-1003240723502"))
 
-CACHE_FILE = "translated_posts.json"
+#CACHE_FILE = "translated_posts.json"
 
 PORT = int(os.environ.get("PORT", 10000))
 
